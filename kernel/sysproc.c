@@ -6,7 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-
+#include "sysinfo.h"
 uint64
 sys_exit(void)
 {
@@ -103,4 +103,18 @@ sys_trace(void)
   argint(0,&n);   //接收参数
   myproc()->mask = n;
   return 0;
+}
+
+uint64
+sys_sysinfo(void)
+{
+  struct proc *p = myproc();    //获取进程信息
+  uint64 info;
+  argaddr(0, &info);   //获取参数
+  struct sysinfo sys_info;
+  sys_info.freemem = free_mem();
+  sys_info.nproc = n_proc_num();
+  if(copyout(p->pagetable, info, (char *)&sys_info, sizeof(sys_info)) < 0) //将参数传递给调用者
+        return -1;
+      return 0;
 }
