@@ -440,3 +440,39 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+
+void vm_print_child(pagetable_t pagetable, int level)
+{
+
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    uint64 child = PTE2PA(pte);
+     
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      //有效且无读、写或执行权限
+       for (int l = 0; l < level; l++) {
+        printf(" ..");
+      }
+      printf("%d: pte %p pa %p\n",i, pte,  child);
+      vm_print_child((pagetable_t)child, level+1);
+
+    }else if(pte & PTE_V) //到达第三级页表，有效且有读写权限为分配好的页，打印树
+    {
+       for (int l = 0; l < level; l++) {
+        printf(" ..");
+      }
+      printf("%d: pte %p pa %p\n",i, pte,  child);
+    }
+    
+
+
+  }
+}
+
+void vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n",pagetable);
+  vm_print_child(pagetable, 1);
+}
+
