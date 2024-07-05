@@ -72,7 +72,18 @@ usertrap(void)
     char *mem ;
     va = PGROUNDDOWN(va); 
     
-    printf("page fault: %p\n",va);    
+   // printf("page fault: %p\n",va); 
+    
+    if(va > p->sz )   //高于sbrk()则终止进程
+    {
+      p->killed = 1;
+    }
+    else
+    if (va >= p->sz || va <= PGROUNDDOWN(p->trapframe->sp)) {
+      p->killed = 1;
+    }else 
+
+
     if((mem = kalloc()) == 0)    //懒分配，每次只分配一次页面即可
     {
         p->killed = 1;
