@@ -65,9 +65,32 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if((which_dev = devintr()) != 0){
+  }  
+  else if(r_scause() == 13 || r_scause() == 15) 
+  {
+    uint64 va = r_stval();
+    char *mem ;
+    va = PGROUNDDOWN(va); 
+    
+    printf("page fault: %p\n",va);    
+    if((mem = kalloc()) == 0)    //懒分配，每次只分配一次页面即可
+    {
+        p->killed = 1;
+    }else{      //防止执行下面代码
+    memset(mem, 0, PGSIZE);
+   if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0)
+    {
+      kfree(mem);
+       p->killed = 1;
+    }
+    }
+  }
+  
+
+  
+  else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  }else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
