@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -311,22 +313,24 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
-
+  //char *mem;
+  
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    flags = (PTE_FLAGS(*pte) &(~PTE_W)) | PTE_COW;
+    *pte = PA2PTE(pa) | flags;
+    // if((mem = kalloc()) == 0)
+    //   goto err;
+    // memmove(mem, (char*)pa, PGSIZE);
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){    //更新PTE，但是没有分配物理内存
+      //kfree(mem);
       goto err;
     }
+    incr_mem_cnt(pa);
   }
   return 0;
 
@@ -355,12 +359,16 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
-
+  char *mem;
+  pte_t *pte;
+  struct proc *p = myproc();
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
-      return -1;
+    {
+      pa0 =cow
+    }
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
@@ -439,4 +447,61 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+
+
+
+int cowcopy(uint64 va, pagetable_t pagetable)
+{
+
+   
+    uint64  pa;
+    uint flag;
+    char *mem;
+    pte_t *pte;
+
+
+    if(va > MAXVA )
+    {
+      return 0;  
+    }
+    va = PGROUNDDOWN(va);
+    pte = walk(pagetable, va, 0);
+    if(pte ==0)
+    {
+      return 0;
+    }
+    pa = PTE2PA(*pte);
+    flag = PTE_FLAGS(*pte);
+
+    if(!(flag & PTE_COW))
+      {
+          panic("cowcopy");
+      }
+    
+    if(get_mem_cnt(pa) == 1)  //若只有一个引用则直接分配该物理内存
+    {
+       *pte = (*pte & ~PTE_COW) | PTE_W;
+      return pa;
+    }
+    else{
+    
+    
+    if((mem = kalloc()) == 0)
+      {
+        return 0;
+      }
+
+      memmove(mem, (char*)pa, PGSIZE);
+      flag =  (flag & ~PTE_COW) | PTE_W;
+    if(mappages(pagetable, va, PGSIZE, (uint64)mem, flag) != 0)
+    {
+      kfree(mem);
+       return 0;
+    }
+    dec_mem_cnt(pa);
+
+    return (uint64)mem;
+    }
 }
