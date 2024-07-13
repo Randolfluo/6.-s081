@@ -30,7 +30,7 @@ kinit()
   for(int i =0; i < NCPU; i++)
     {
       snprintf(lockname, sizeof(lockname), "kmem_%d", i);
-      initlock(&kmem[i].lock, "kmem");
+      initlock(&kmem[i].lock, lockname);
     }
   freerange(end, (void*)PHYSTOP);
 }
