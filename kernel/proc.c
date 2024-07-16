@@ -5,6 +5,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fs.h"
+#include "fcntl.h"
 
 struct cpu cpus[NCPU];
 
@@ -133,7 +135,7 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
-
+  memset(&p->vma, 0, sizeof(p->vma));
   return p;
 }
 
@@ -302,6 +304,14 @@ fork(void)
 
   np->state = RUNNABLE;
 
+
+  for(i = 0; i < MAX_MMAP_REGIONS; ++i) {
+    if(p->vma[i].used) {
+      memmove(&np->vma[i], &p->vma[i], sizeof(p->vma[i]));
+      filedup(p->vma[i].file);
+    }
+  }
+
   release(&np->lock);
 
   return pid;
@@ -352,6 +362,21 @@ exit(int status)
       p->ofile[fd] = 0;
     }
   }
+for(int i = 0; i < MAX_MMAP_REGIONS; ++i) {
+    if(p->vma[i].used) {
+      if(p->vma[i].flag == MAP_SHARED && (p->vma[i].prot & PROT_WRITE) != 0) {
+        filewrite(p->vma[i].file, p->vma[i].addr, p->vma[i].size);
+      }
+      fileclose(p->vma[i].file);
+      uvmunmap(p->pagetable, p->vma[i].addr, p->vma[i].size / PGSIZE, 1);
+      p->vma[i].used = 0;
+    }
+  }
+
+
+
+
+
 
   begin_op();
   iput(p->cwd);

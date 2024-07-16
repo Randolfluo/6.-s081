@@ -5,6 +5,11 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "sleeplock.h"
+#include "file.h"
+#include "fcntl.h"
+#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -172,7 +177,8 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+        continue;
+      //panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -306,7 +312,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      continue;
+      //panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -428,4 +435,57 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+
+
+
+int mapfile(uint64 va)
+{
+  int i;
+  int flag = PTE_U;
+  int prot;
+  char *mem;
+  int offset = 0;
+  struct proc* p = myproc();
+    for(i = 0; i < MAX_MMAP_REGIONS; i ++)
+    {
+      if(p->vma[i].used == 0) continue;
+      if(p->vma[i].addr <= va && p->vma[i].addr + p->vma[i].size - 1 >= va )  break;
+    }
+    if(i == MAX_MMAP_REGIONS)
+    {
+      return -1;
+    }
+    
+
+    
+    prot = p->vma[i].prot;
+    if(prot & PROT_READ)   flag |= PTE_R;
+    if(prot & PROT_WRITE)  flag |= PTE_W;
+    if(prot & PROT_EXEC)   flag |= PTE_X;
+
+
+    if((mem = kalloc()) == 0)
+      return -1;
+     memset(mem, 0, PGSIZE);
+    offset = p->vma[i].offset + PGROUNDDOWN(va - p->vma[i].addr) ;
+    ilock(p->vma[i].file->ip);
+    if(readi(p->vma[i].file->ip, 0,(uint64)mem, offset, PGSIZE) == 0)
+    {
+      iunlock(p->vma[i].file->ip);
+      kfree(mem);
+      return -1;
+    }
+    iunlock(p->vma[i].file->ip);
+
+    if(mappages(p->pagetable, PGROUNDDOWN(va), PGSIZE, (uint64)mem, flag) < 0)
+    {
+      kfree(mem);
+      return -1;
+    }
+    return 0;
+
+
+
 }

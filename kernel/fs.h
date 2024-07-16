@@ -58,3 +58,6 @@ struct dirent {
   char name[DIRSIZ];
 };
 
+
+
+#define MAX_MMAP_REGIONS 16
