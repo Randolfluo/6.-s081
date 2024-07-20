@@ -97,7 +97,7 @@
 #define E1000_TXD_STAT_DD    0x00000001 /* Descriptor Done */
 
 // [E1000 3.3.3]
-struct tx_desc
+struct tx_desc    //接收环
 {
   uint64 addr;
   uint16 length;
