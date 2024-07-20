@@ -71,7 +71,7 @@ usertrap(void)
   {
       uint64 va = r_stval();
       
-      if(va > p->sz || va < p->trapframe->sp)
+      if(va > p->sz || va > MAXVA || va < p->trapframe->sp)
           p->killed = 1;
       else if( mapfile(va)){
           p->killed = 1;

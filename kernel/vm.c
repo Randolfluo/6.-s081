@@ -469,7 +469,7 @@ int mapfile(uint64 va)
     if((mem = kalloc()) == 0)
       return -1;
      memset(mem, 0, PGSIZE);
-    offset = p->vma[i].offset + PGROUNDDOWN(va - p->vma[i].addr) ;
+    offset = PGROUNDDOWN(p->vma[i].offset + va - p->vma[i].addr) ;
     ilock(p->vma[i].file->ip);
     if(readi(p->vma[i].file->ip, 0,(uint64)mem, offset, PGSIZE) == 0)
     {

@@ -497,8 +497,8 @@ sys_mmap(void)
         return err;
 
   struct proc *p = myproc();
-  if(p->sz + len > MAXVA)
-    return err;
+  // if(p->sz + len > MAXVA)
+  //   return err;
   if(f->writable == 0 && (prot & PROT_WRITE) != 0 && flags == MAP_SHARED)
     return err;
 
@@ -523,7 +523,7 @@ sys_mmap(void)
      break;
     }
   }
-  p->sz += len;
+  //p->sz += len;
   return addr;
 }
 
