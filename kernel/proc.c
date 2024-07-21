@@ -368,7 +368,6 @@ for(int i = 0; i < MAX_MMAP_REGIONS; ++i) {
         filewrite(p->vma[i].file, p->vma[i].addr, p->vma[i].size);
       }
       fileclose(p->vma[i].file);
-      uvmunmap(p->pagetable, p->vma[i].addr, p->vma[i].size / PGSIZE, 1);
       p->vma[i].used = 0;
     }
   }

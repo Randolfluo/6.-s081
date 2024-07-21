@@ -565,7 +565,7 @@ sys_munmap(void)
     uvmunmap(p->pagetable, addr, len/PGSIZE, 1);
 
 
-    if(p->vma[i].file == 0) {
+    if(p->vma[i].size == 0) {
     fileclose(p->vma[i].file);
     p->vma[i].used = 0;
   }
